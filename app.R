@@ -3,35 +3,50 @@ library(readxl)
 library(dplyr)
 
 ui <- fluidPage(
-  titlePanel("Statistiniai testai per minutę!"),
+  titlePanel(title = "Statistiniai testai per minute"),
   sidebarLayout(
-    sidebarPanel(
-      fileInput("file", "Choose a file to upload:", accept = ".xlsx"),
+    sidebarPanel = sidebarPanel(
+      fileInput(
+        inputId = "file",
+        label = "Choose a file to upload:",
+        accept = ".xlsx"
+      ),
       br(),
-      selectInput("column1", "Select a column for X:", choices = NULL, width = "100%"),
-      selectInput("column2", "Select a column for Y:", choices = NULL, width = "100%"),
-      selectInput("model_type", "Select a model type:", choices = c("ANOVA","Stjudento t-testas","Kruskal-Wallis"), selected = "ANOVA")
+      selectInput(
+        inputId = "column1",
+        label = "Select a column for X:",
+        choices = "None",
+        width = "100%"
+      ),
+      selectInput(
+        inputId = "column2",
+        label = "Select a column for Y:",
+        choices = "None",
+        width = "100%"
+      ),
+      selectInput(
+        inputId = "model_type",
+        label = "Select a model type:",
+        choices = c("ANOVA", "Stjudento t-testas", "Kruskal-Wallis"),
+        selected = "ANOVA"
+      )
     ),
-    mainPanel(
+    mainPanel = mainPanel(
       tabsetPanel(
-        tabPanel("Column Data",
-                 dataTableOutput("data"),
-                 plotOutput("histogram"),
-                 p("This table displays the first 10 rows and the summarised data of the selected columns.")
+        tabPanel(
+          title = "Column Data",
+          dataTableOutput(outputId = "data"),
+          gt_output(outputId = "gt_data"),
+          plotOutput(outputId = "histogram")
         ),
-        # tabPanel("Histogram",
-        #          plotOutput("histogram"),
-        #          p("This histogram displays the distribution of values in the selected column.")
-        # ),
-        tabPanel("Model Results",
-                 verbatimTextOutput("model"),
-                 p("This table displays the summary statistics of the selected model.")
+        tabPanel(
+          title = "Model Results",
+          verbatimTextOutput(outputId = "model"),
+          p("This table displays the summary statistics of the selected model.")
         )
       )
     )
-  ),
-  # Add some Bootstrap theming
-  tags$head(tags$style(HTML(".selectize-input { border-radius: 4px; }")))
+  )
 )
 
 server <- function(input, output, session) {
@@ -53,9 +68,20 @@ server <- function(input, output, session) {
     req(input$file)
     req(input$column1)
     req(input$column2)
-    data.frame(X = uploaded_data()[[input$column1]][1:10], Y = uploaded_data()[[input$column2]][1:10]) %>%
-      bind_rows(summarise_at(uploaded_data(), input$column1, list(mean = mean, sd = sd, min = min, max = max)))
+
+    data.frame(X = uploaded_data()[[input$column1]], Y = uploaded_data()[[input$column2]])
+
   })
+
+  # Output the selected columns data
+  output$gt_data <- render_gt(
+
+    data.frame(X2 = uploaded_data()[[input$column1]], Y2 = uploaded_data()[[input$column2]]) %>%
+      tbl_summary(by = X2,
+                  type = Y2 ~ "continuous") %>%
+      as_gt() %>%
+      tab_header(md("**Table 1. Patient Characteristics**"))
+  )
 
   # Create a histogram of the selected column
   output$histogram <- renderPlot({
